@@ -6,12 +6,9 @@ import { initializeApp } from 'firebase/app'
 
 export const firebaseApp = initializeApp({
 	// NOTE:APIキーは、GCPで設定・閲覧するものっぽい。GCPの「APIとサービス」の「認証情報」にて、自動でキーがつくられている
-	// apiKey: '40文字くらいのAPIキー文字列',
-	apiKey: 'AIzaSyAvwBbZKtuhzr6tfXl99L4FgZnmmNxrMPc',
+	apiKey: 'AIzaSyCBHDWaHsDoSFrBmPm_EzIvu8vDIDmx9nA',
 	//※プロジェクトID.appspot.com（プロジェクト名じゃないよ）
-	// authDomain: 'プロジェクトID.appspot.com',
-	authDomain: 'instant-win-9d4ad.appspot.com',
+	authDomain: 'negokazu-72015.appspot.com',
 	// ※プロジェクトID
-	// projectId: 'プロジェクトID',
-	projectId: 'instant-win-9d4ad',
+	projectId: 'negokazu-72015',
 })
