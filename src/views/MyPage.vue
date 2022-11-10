@@ -84,7 +84,7 @@ export default {
 		memberDocData0: Object,
 		LINEuID0: String,
 	},
-	// SECTION:関数
+	// SECTION:関数f
 	methods: {
 		async doUpdate() {
 			console.log('送信ボタンが押されたよ')
