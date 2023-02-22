@@ -1,5 +1,23 @@
 {
 	"projects": {
-		"default": "negokazu-72015"
+		"default": "extolevel-54e01"
+	},
+	"targets": {
+		"extolevel-54e01": {
+			"hosting": {
+				"application-form": [
+					"application-form-1"
+				],
+				"inform-form": [
+					"inform-form-1"
+				],
+				"admin-site": [
+					"admin-site-11"
+				],
+				"hold-place": [
+					"hold-place-1"
+				]
+			}
+		}
 	}
 }

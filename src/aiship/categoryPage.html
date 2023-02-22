@@ -1,0 +1,445 @@
+<!-- https://extolevel.shop/ic/presented-by -->
+<!-- NOTE:aishipにコピペ時はコメントアウト（末尾もあるよ） -->
+<!-- <!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Document</title>
+	</head>
+	<body> -->
+<!-- NOTE:aishipにコピペ時はコメントアウト（末尾もあるよ） -->
+<div id="sysForm">
+	<h2 style="margin: 10px 50px 10px">みんなでつなごうエクレベの輪：ログインフォーム</h2>
+	<form>
+		<input type="text" placeholder="メールアドレス" id="mailAddress4DB" style="margin: 10px 50px 10px; width: 400px" /><br />
+		<input type="password" placeholder="注文ページ閲覧パスワード" id="password4DB" style="margin: 10px 50px 10px; width: 400px" /><br />
+		<input type="button" value="ログイン" id="loginButton" style="margin: 10px 50px 10px" /><br />
+	</form>
+</div>
+
+<!-- Axios -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.2.2/axios.min.js"></script>
+<!-- Hashids -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hashids/2.2.10/hashids.min.js"></script>
+
+<script type="module">
+	console.log('みんなで繋ごうエクレべの輪：商品一覧ページ（協賛牧草一覧）')
+	// :::商品ページ初期状態（はじめは非表示）
+	const sysMain = document.getElementById('sysMain') //の最初の要素（ひとつだけしかないはずなので）
+	sysMain.style.display = 'none'
+	// :::ログインフォームの表示
+	// 送信ボタン
+	const submitButton = document.getElementById('loginButton')
+	submitButton.addEventListener('click', submit, false) //NOTE:submit関数は下に定義アリ
+	const sysWrap = document.getElementById('sysWrap')
+	const sysAside = document.getElementById('sysAside')
+	const div = document.getElementById('sysForm')
+	sysWrap.insertBefore(div, sysAside)
+
+	// :::Firebase関連
+	// Firebase関連インポート
+	import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-app.js'
+	import {
+		getFirestore,
+		collection,
+		doc,
+		getDoc,
+		addDoc,
+		setDoc,
+		updateDoc,
+		query,
+		orderBy,
+		limit,
+		where,
+		getDocs,
+		deleteDoc /*deleteField*/,
+	} from 'https://www.gstatic.com/firebasejs/9.15.0/firebase-firestore.js'
+
+	// グローバル初期設定
+	const firebaseApp = initializeApp({
+		apiKey: 'AIzaSyAUKz7IkIM79BvXMWRbH1fWYqQmtzi7PbI',
+		authDomain: 'extolevel-54e01.appspot.com',
+		projectId: 'extolevel-54e01',
+	})
+	// Firestoreのオブジェクト取得
+	const db = getFirestore(firebaseApp)
+
+	// コレクションへの参照を取得する関数
+	function getCollectionRef(_path) {
+		let ref
+		// 通常コレクション
+		if (_path.indexOf('/') == -1) {
+			ref = collection(db, _path)
+		}
+		// サブコレクション
+		else {
+			const paths = _path.split('/')
+			ref = collection(db, paths[0], paths[1], paths[2])
+		}
+		return ref
+	}
+
+	// docRefを取得する関数
+	function getDocRef(_path) {
+		const collectionName = _path.split('/')[0]
+		const docName = _path.split('/')[1]
+		let ref
+		// 通常の場合
+		if (_path.split('/').length == 4) {
+			const subCollectionName = _path.split('/')[2]
+			const subDocName = _path.split('/')[3]
+			ref = doc(db, collectionName, docName, subCollectionName, subDocName)
+		}
+		// サブコレクションアリの場合
+		else {
+			ref = doc(db, collectionName, docName)
+		}
+		return ref
+	}
+
+	// docを取得する関数
+	async function getDocSnap(_docRef) {
+		try {
+			const docSnap = await getDoc(_docRef)
+			if (docSnap.exists()) {
+				return docSnap //あればdocsnapを返して
+			} else {
+				console.log('No such Document!!!')
+				return null //なければnullを返す
+			}
+
+			// NOTE:「data = docSnap.data()」でデータ中身取得。「data.フィールド名」で、あるフィールド値を取得。
+		} catch (error) {
+			console.log(error)
+		}
+	}
+
+	// docを検索する関数（↓のパーツ）
+	async function getDocSnaps(_collectionRef, _queryObj) {
+		let q
+		// １つのクエリのとき
+		if (Object.keys(_queryObj).length == 1) {
+			q = query(_collectionRef, where(_queryObj['1'][0], _queryObj['1'][1], _queryObj['1'][2]))
+		}
+		// ２つのクエリのとき（AND条件）
+		else if (Object.keys(_queryObj).length == 2) {
+			// TODO:クエリオブジェクトがorderByを含んでた場合、必ず['orderBy', '並べ替え基準フィールド', 'limit数']の形になっている。
+			if (_queryObj['2'].includes('orderBy')) {
+				q = query(_collectionRef, where(_queryObj['1'][0], _queryObj['1'][1], _queryObj['1'][2]), orderBy(_queryObj['2'][1]), limit(_queryObj['2'][2]))
+			} else {
+				q = query(
+					_collectionRef,
+					where(_queryObj['1'][0], _queryObj['1'][1], _queryObj['1'][2]),
+					where(_queryObj['2'][0], _queryObj['2'][1], _queryObj['2'][2])
+				)
+			}
+		}
+		// ３つのクエリのとき（AND条件）
+		else if (Object.keys(_queryObj).length == 3) {
+			if (_queryObj['3'].includes('orderBy')) {
+				q = query(
+					_collectionRef,
+					where(_queryObj['1'][0], _queryObj['1'][1], _queryObj['1'][2]),
+					where(_queryObj['2'][0], _queryObj['2'][1], _queryObj['2'][2]),
+					orderBy(_queryObj['3'][1]),
+					limit(_queryObj['3'][2])
+				)
+			} else {
+				q = query(
+					_collectionRef,
+					where(_queryObj['1'][0], _queryObj['1'][1], _queryObj['1'][2]),
+					where(_queryObj['2'][0], _queryObj['2'][1], _queryObj['2'][2]),
+					where(_queryObj['3'][0], _queryObj['3'][1], _queryObj['3'][2])
+				)
+			}
+		}
+		try {
+			const docsnaps = await getDocs(q)
+			// NOTE:ここで「.docs」をとっていることが重要！詳細は公式docmentを参照。https://firebase.google.cn/docs/reference/js/firestore_.querysnapshot?hl=ja
+			if (docsnaps.empty) {
+				console.log('No such document...!')
+				return null
+			} else {
+				const resultDocs = docsnaps.docs
+				return resultDocs
+			}
+			// NOTE:↑検索結果が１docsnapでも、その後forEachでデータ取得せよ！！∵returnはdocsnapの「配列」だから！
+			/*
+						【NOTE:クエリの文法】
+						where()は必ず３つの引数をもつ。
+						例：where('name', '==', 'taro')
+						例：where('height', '>', 170)
+						例：where('married', '!=', false)
+						例：where('hobbies', 'array-contains', 'guitar')・・・趣味のなかにギターが含まれてるひと
+						例：where('hobbies', 'array-contains-any', ['guitar', 'manga', 'bonsai'])・・・趣味のなかにギターor漫画or盆栽が含まれてるひと
+						例：where('nearestStation', 'in', ['hashimoto', 'sagamihara', 'yabe'])・・・最寄りが橋本or相模原or矢部のひとってこと
+						例：where('nearestStation', 'not-in', ['hashimoto', 'sagamihara', 'yabe'])・・・最寄りが橋本でも相模原でも矢部でもないってこと
+
+						【NOTE:複合クエリの注意点】
+						https://firebase.google.com/docs/firestore/query-data/queries
+						（１）<,<=,>,>=,!=を含むクエリはひとつのフィールドでだけ可能。
+						（「身長170cm以上」をつかったら、同じクエリで「体重80kg未満」は使えない）
+						（２）'array-contains'と'array-contains-any'は、どちらかひとつのみ
+						*/
+		} catch (error) {
+			console.log(error)
+			return null
+		}
+	}
+
+	// docをアプデする関数のパーツ
+	async function updateaDoc(_docRef, _data) {
+		try {
+			await updateDoc(_docRef, _data)
+		} catch (error) {
+			console.log(error)
+		}
+	}
+
+	// eventDocをアプデする関数
+	async function updateEventDoc(_eventID, _data) {
+		const docRef = getDocRef(`events/${_eventID}`)
+		try {
+			await updateaDoc(docRef, _data)
+		} catch (error) {
+			console.log(error)
+		}
+	}
+
+	// イベントdocを取得（eventIDで指定）
+	async function getEventDocData(_eventID) {
+		const docRef = getDocRef(`events/${_eventID}`)
+		try {
+			const docSnap = await getDocSnap(docRef)
+			if (docSnap != null) {
+				const data = docSnap.data()
+				return data
+			} else {
+				return null
+			}
+		} catch (error) {
+			console.log(error)
+		}
+	}
+	// イベントdocを検索する関数
+	async function searchEventDocs(_queryObj) {
+		const collectionRef = getCollectionRef('events')
+		let docDatas = []
+		try {
+			const docsnaps = await getDocSnaps(collectionRef, _queryObj)
+			if (docsnaps != null) {
+				docsnaps.forEach((docsnap) => {
+					docDatas.push(docsnap.data())
+				})
+				return docDatas[0]
+			} else {
+				return null
+			}
+		} catch (error) {
+			console.log(error)
+			return null
+		}
+	}
+
+	// メンバーdocを取得する関数
+	async function getMemberDocDataWithMemberID(_memberID) {
+		const docRef = getDocRef(`members/${_memberID}`)
+		try {
+			const docSnap = await getDocSnap(docRef)
+			if (docSnap != null) {
+				const data = docSnap.data()
+				return data
+			} else {
+				return null
+			}
+		} catch (error) {
+			console.log(error)
+		}
+	}
+	// :::Messaging API関連
+	// const botURL = 'http://localhost:8080' //NOTE:botのURL
+	const botURL = 'https://ver202301262-yznocuz53q-an.a.run.app'
+	// const botURL = 'http://localhost:8080'
+	const endPointURL = botURL + '/hold'
+	async function sendHoldMessage(_prefecture) {
+		// botにgetリクエストをおくって、（botにsendMessageしてもらう）
+		console.log('sendHoldMessage()起動')
+		const params = {
+			prefecture: _prefecture,
+		}
+		const options = {
+			params: params,
+		}
+		try {
+			const res = await axios.post(endPointURL, options)
+			console.log('res: ', res)
+		} catch (error) {
+			console.log(error)
+		}
+	}
+
+	// 商品ページへのリンク部分にパラメータを追加する関数
+	function addParams(_eventDocData) {
+		// :::URLの準備
+		/* NOTE:
+		HTML5ではhtmlのタグに「カスタム属性」をつけられる。
+		aiship(R)でも、このカスタム属性をつかっている。
+		カスタム属性は必ず「data-なんちゃら」という形で表記される。
+		このページでは商品リスト部分<li>が、 「data-item-id」というカスタム属性をもっている
+		*/
+		// 商品部分を取得
+		const itemDatas = document.querySelectorAll('[data-item-id]')
+		// それぞれの商品に対して
+		for (let i = 0; i < itemDatas.length; i++) {
+			const aTags = itemDatas[i].querySelectorAll('a')
+			console.log('aTags: ', aTags)
+			// そのなかのaタグリンクにパラメータを追加
+			for (let j = 0; j < aTags.length; j++) {
+				const url = new URL(aTags[j].href)
+				const params = url.searchParams
+				params.set('eventID', _eventDocData.eventID)
+				params.set('timestamp', 0)
+				aTags[j].href = url.href
+				console.log(`aTags[${j}]: `, aTags[j])
+			}
+		}
+	}
+	// このページアクセス時に、パラメータチェック
+	// ：：：リクエストパラメータを取得
+	let url = new URL(window.location.href)
+	const params = url.searchParams
+	const timestamp = params.get('timestamp')
+	const eventID = params.get('eventID')
+	console.log('timestamp: ', timestamp)
+	console.log('eventID: ', eventID)
+	// 両方のパラメータがあったらOK
+	if (timestamp == 0 && eventID) {
+		// firestoreから、eventDOcを取得
+		const eventDocData = await getEventDocData(eventID)
+		console.log('eventDocData: ', eventDocData)
+		if (eventDocData) {
+			const expirationTs = eventDocData.expirationTs
+			const nowTs = new Date().getTime()
+			//期限内ならばOK!!!
+			if (nowTs < expirationTs) {
+				console.log('ログイン保持成功。')
+				// ログインフォームを非表示、
+				div.style.display = 'none'
+				// sysMainだかを表示！
+				sysMain.style.display = 'block'
+				addParams(eventDocData)
+			}
+			// 期限切れだとダメ
+			else {
+				// ログインフォームを表示
+				console.log('ログイン期限切れです')
+				window.alert('ログイン期限切れです。購入をご希望の場合、事務局までメールしてください。')
+			}
+		} else {
+			window.alert('イベントデータが見つかりません。事務局までメールでお問い合わせください！')
+		}
+	}
+	// どちらかのパラメータがなかったら
+	else {
+		//不正なアクセス
+		console.log('getパラメータなしなので、初回アクセス。')
+		// window.alert(
+		//     "不正なアクセスです。直接本商品ページにアクセスせず、みんなで繋ごうエクレべの輪の商品一覧ページからアクセスしてください。"
+		// );
+	}
+	// checkRequestParams()
+	// :::その他のベンリ関数
+	function genHashID(_n = 0) {
+		const hashids = new Hashids('', 10)
+		const time = new Date().getTime()
+		const rand = Math.floor(Math.random() * 100000)
+		const hashSeed = time + rand - _n
+		const id = hashids.encode(hashSeed)
+		console.log('ランダムに生成されたid: ', id)
+		return id
+	}
+	// :::メインプログラムの処理
+
+	// ログイン関数
+	async function logIn() {
+		// フォームの内容を取得して、
+		const mailAddress = document.getElementById('mailAddress4DB').value
+		const password = document.getElementById('password4DB').value
+		const queryObj = {
+			1: ['mailAddress', '==', mailAddress],
+			2: ['password', '==', password],
+		}
+		const eventDocData = await searchEventDocs(queryObj)
+		console.log('eventDocData: ', eventDocData)
+		return eventDocData
+	}
+
+	//【フォーム送信関数】
+	async function submit() {
+		console.log('送信されました')
+		try {
+			const eventDocData = await logIn()
+			// ログイン成功時（該当docあり）
+			if (eventDocData) {
+				const memberID = eventDocData.memberID
+				console.log('memberID: ', memberID)
+				const memberDocData = await getMemberDocDataWithMemberID(memberID)
+				// 会員docも取得
+				if (memberDocData) {
+					// 垢BAN
+					if (memberDocData.status == 'BAN') {
+						alert('恐れ入りますが、お客さまのアカウントは現在停止中です。')
+					}
+					// 正常ログイン成功
+					else {
+						// 商品注文エリアを表示する
+						sysMain.style.display = 'block' //inlineかblockか。
+						// ログインフォームを非表示にする
+						div.style.display = 'none'
+						// 商品ページへのリンクにパラメータ追加する
+						addParams(eventDocData)
+
+						// この都道府県のひとにLINEメッセージ配信
+						const prefecture = eventDocData.prefecture
+						console.log('prefecture: ', prefecture)
+						await sendHoldMessage(prefecture)
+						// このイベントdocのパスワードを更新しちゃう
+						const newPassword = genHashID()
+						const expirationTs = new Date().getTime() + 43200000
+						const data = {
+							password: newPassword,
+							expirationTs: expirationTs, //ゆ
+						}
+						const eventID = eventDocData.eventID
+						console.log('eventID: ', eventID)
+						console.log('newPassword:', newPassword)
+						await updateEventDoc(eventID, data)
+					}
+				}
+			}
+			// ログイン失敗（該当docなし）
+			else {
+				// アラートを出す
+				alert('メールアドレスまたは注文ページ閲覧パスワードが間違っています！\nご確認のうえ、もう一度入力し直してください。')
+			}
+		} catch (error) {
+			console.log(error)
+		}
+	}
+	// DEBUG:必ずコメントアウト
+	// sendHoldMessage('神奈川県')
+	// DEBUG:必ずコメントアウト
+</script>
+
+<!-- NOTE:aishipにコピペ時はコメントアウト（冒頭もあるよ） -->
+<!-- </body>
+</html> -->
+<!-- NOTE:aishipにコピペ時はコメントアウト（冒頭もあるよ） -->
+
+<!-- <style>
+	/* #sysMain {
+	display: none
+} */
+</style> -->

@@ -1,6 +1,6 @@
 // import { getMemberDocDataWithLINEuID } from '@/modules/utils'
 
-const liffID = '1657042783-Xo1lzbmv' //たとえば、1657042783-Xo1lzbmv
+const liffID = '1657647955-me5dOKZR' //たとえば、1657042783-Xo1lzbmv
 const liff = require('@line/liff')
 
 /**
@@ -20,4 +20,3 @@ export async function getLIFFInfo() {
 	console.log('LINEuID（@liff.js）: ', LINEuID)
 	return LINEuID
 }
-

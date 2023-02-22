@@ -1,12 +1,19 @@
 <template>
 	<div class="admin">
 		<LoginUI v-if="!isAdmin && !LINEuID" />
+			
+		<!-- :::開発用 -->
+			<!-- <div>
+				<v-btn @click='genDummyMemberDoc()'>ダミーメンバー生成</v-btn>
+				<v-btn @click='deleteDummyMemberDoc()'>ダミーメンバー削除</v-btn>
+				<v-btn @click='genDummyEventDoc()'>ダミーイベント生成</v-btn>
+				<v-btn @click='deleteDummyEventDoc()'>ダミーイベント削除</v-btn>
+			</div> -->
+			<!-- :::開発用 -->
 		<!-- SECTION:会員検索エリア -->
-
 		<v-card>
-			<v-card-title>会員の検索</v-card-title>
-			<v-card-text>検索すると、会員リストが下に表示されます。</v-card-text>
-			<v-card-text>※検索窓になにも入力しないまま検索すると、全会員リストを取得します。</v-card-text>
+			<v-card-title>事業者の検索</v-card-title>
+			<v-card-text>検索すると、事業者リストが下に表示されます。</v-card-text>			
 			<v-card-actions>
 				<v-container>
 					<v-row justify="center">
@@ -14,11 +21,14 @@
 							<v-select outlined :items="Object.keys(items)" label="この項目で検索" v-model="selectedItem"></v-select>
 						</v-col>
 						<v-col cols="5">
-							<v-text-field outlined label="ここに値を入力" v-model="keyword"></v-text-field>
+							<v-text-field outlined label="ここに値を入力" v-model="value"></v-text-field>
 						</v-col>
 						<v-col cols="3">
-							<v-btn color="primary" x-large @click="searchMembers(keyword)"><v-icon>mdi-account-search</v-icon> 検索</v-btn>
+							<v-btn color="primary" x-large @click="searchMembers(selectedItem, value)"><v-icon>mdi-account-search</v-icon> 検索</v-btn>
 						</v-col>
+					</v-row>
+					<v-row justify="center">				
+						<v-alert  color="blue-grey" dark :value="isNowLoading">検索中...</v-alert>				
 					</v-row>
 				</v-container>
 			</v-card-actions>
@@ -27,24 +37,13 @@
 		<!-- （２）全会員リストを取得するボタン（firestoreの負荷は高い） -->
 		<v-container class="ma-10">
 			<v-row justify="space-around">
-				<v-card width="50%" color="blue">
-					<v-list>
-						<v-subheader>検索結果会員リスト</v-subheader>
-						<v-list-item v-for="member in memberDocDatas" :key="member.memberID" @click="go2MembersMyPage(member.memberID)">
-							<v-list-item-content>
-								<v-list-item-title>
-									{{ member.name }}
-								</v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
-						<!-- 該当会員ナシの場合 -->
-						<v-list-item v-if="memberDocDatas == null">
-							<v-list-item-content>
-								<v-list-item-title> ※該当会員がいません！ </v-list-item-title>
-							</v-list-item-content>
-						</v-list-item>
-						<v-divider></v-divider>
-					</v-list>
+				<v-card v-if="memberDocDatas.length > 0">
+					<!-- <v-row v-for="member in memberDocDatas" :key="member.id"> -->
+						<!-- <v-col cols="3"> -->
+							<v-data-table :headers="headers" :items="memberDocDatas" @click:row="go2MembersMyPage">
+							</v-data-table>														
+						<!-- </v-col> -->
+					<!-- </v-row>												 -->					
 				</v-card>
 			</v-row>
 		</v-container>
@@ -67,8 +66,10 @@
 <script>
 import LoginUI from '@/components/LoginUI.vue'
 import { logOut } from '@/modules/admin'
-import { searchMemberDocs } from '@/modules/utils'
-// import { queryEqual } from '@firebase/firestore'
+import { deleteMemberDoc, searchMemberDocs, setNewMemberDoc } from '@/modules/utils'
+// import axios from 'axios'
+// import { SERVER_URL } from '@/main'
+import { genHashID } from '@/modules/otherUtils.js'
 export default {
 	name: 'AdminPage',
 	// SECTION:コンポーネント
@@ -80,138 +81,172 @@ export default {
 			memberDocDatas: [],
 			// LINEuID: null,
 			isAdmin: false,
-			keyword: null,
-			// items: [
-			// 	{
-			// 		label: '氏名',
-			// 		fieldName: 'name',
-			// 	},
-			// 	{
-			// 		label: 'メールアドレス',
-			// 		fieldName: 'address',
-			// 	},
-			// ],
-			items: {
-				氏名: 'name',
-				メールアドレス: 'address',
+			// keyword: null,	
+			items: {												
+				電話番号: 'phoneNumber',
+				担当者名: 'managerName',
+				法人名: 'campanyName',
+				ステータス: 'status'
 			},
+			headers: [
+				{
+					text: 'ID',
+					value: 'memberID'
+				},
+				{
+					text: '法人名',
+					value: 'campanyName'
+				},
+				{
+					text: '担当者名',
+					value: 'managerName'
+
+				},
+				{
+					text: '電話番号',
+					value: 'phoneNumber'
+				},							
+				{
+					text: 'メールアドレス',
+					value: 'mailAddress',				
+				},
+				{
+					text: 'ステータス',
+					value: 'status',				
+				},																	
+			],
 			selectedItem: null,
+			value: null,
+			isNowLoading: false
 		}
 	},	
 	// SECTION:関数
 	methods: {
+		show(_row){
+			console.log('_row: ', _row)
+		},
 		async tryLogOut() {
 			await logOut()
 			console.log('管理者ログアウトしました')
 			location.reload()
 		},
-		async searchMembers(_keyword) {
-			// membersを初期化
-			this.memberDocDatas = []
-			const queryObj = _keyword == null ? { 1: ['exist', '==', true] } : { 1: [`${this.items[this.selectedItem]}`, '==', `${_keyword}`] }
-			// 実際に取得
+		async searchMembers(_selectedItem, _value){
 			try {
+				console.log('this.selectedItem: ', _selectedItem)
+				console.log('this.value: ', _value)
+				const key = this.items[_selectedItem]
+				console.log('key: ', key)
+				const queryObj = {
+					'1': [key, `==`, _value]
+				}
 				this.memberDocDatas = await searchMemberDocs(queryObj)
-				console.log('検索結果としてのthis.memberDocDatas: ', this.memberDocDatas)
+				if(this.memberDocDatas){
+					console.log('memberDocData: ', this.memberDocDatas)
+					
+				}else{
+					console.log('該当eventDocがない')
+				}				
+			} catch (error) {
+				console.log(error)
+			}
+
+		},		
+		async go2MembersMyPage(_item) {			
+			console.log('_item: ', _item)
+			// console.log('id: ', id)
+			// let tempMemberDocData
+			// for (let i = 0; i < this.memberDocDatas.length; i++) {
+			// 	if (this.memberDocDatas[i].id == id) {
+			// 		tempMemberDocData = this.memberDocDatas[i]
+			// 	}
+			// }
+			// console.log('tempMemberDocData: ', tempMemberDocData)
+			this.$router.push({ name: 'mypage', params: { memberDocData0: _item } })
+		},		
+		// :::【開発用テスト】
+		// ダミー会員docの生成
+		async genDummyMemberDoc(){
+			// 各種うめる
+			// this.memberDocData.password = genHashID()
+			// this.memberDocData.memberID = genHashID()
+			// this.memberDocData.applicationTs = new Date().getTime()
+			this.memberDocData = {
+				memberID: 'test',
+				applicationTs: new Date().getTime(),
+				examinationResultMailLog: [],
+				status: '未対応',//未対応、許可、ダメ
+				password: genHashID(),
+				campanyName: 'テストカンパニー', //法人名
+				campanyNumber: '2222222222222', //法人番号
+				websiteURL: 'google.com', //webサイトURL,
+				phoneNumber: '09011111111',
+				mailAddress: '9yak50@gmail.com',
+				managerName: 'TaroTest', //担当者名
+				postalCode: '2140037', //郵便番号
+				prefecture: '神奈川県', //住所（都道府県）
+				city: '川崎市多摩区', //住所（市区町村）
+				address: '西生田1-1-1', //住所（番地など。市区町村以降。）,
+				events: [],
+				eventAddresses: [],				
+				eventInfo: {
+					eventType: '(2) メインイベントとして活用', //みんなで繋ごうエクレべの輪を以下のどちらで活用しますか？
+					eventName: null, //イベント名（↑が1の場合だけ）
+					eventPlaceCategory: '施設', //イベント実施予定場所（店舗/施設/会場）
+					eventFrequency: '1ヶ月に1回', //イベント実施予定回数（1ヶ月に1回 / 2ヶ月に一回 / 数ヶ月間隔 / どれも当てはまらない）
+					eventAims: ['その他', '集客'], //イベント目的：（集客 / 価値向上 / 経費削減 / その他）
+					eventOtherAim: 'なんとなくやりたい',//イベント目的（↑で「その他」を選択した場合のみ）
+					postalCode: '', // 郵便番号（事業所以外の場合。開催地複数なら、メインの開催地）
+					prefecture: '', // 都道府県（事業所以外の場合。開催地複数なら、メインの開催地）
+					city: '', //市区町村（事業所以外の場合。開催地複数なら、メインの開催地）
+					address: '', // 番地以降（事業所以外の場合。開催地複数なら、メインの開催地）
+				},
+
+			}
+			Object.entries(this.memberDocData.eventInfo).forEach(kAndV=>{
+				const k = kAndV[0]
+				const v = kAndV[1]
+				if(k == 'postalCode' || k == 'prefecture' || k == 'city' || k =='address'){
+					
+					if(v == '' || v == null){
+						this.memberDocData.eventInfo[k] = this.memberDocData[k]
+					}	
+				}
+				
+			})
+			try {						
+				const result = await setNewMemberDoc(this.memberDocData, this.memberDocData.memberID)
+				console.log('result: ', result)												
 			} catch (error) {
 				console.log(error)
 			}
 		},
-		async go2MembersMyPage(_memberID) {
-			console.log('_memberID: ', _memberID)
-			let tempMemberDocData
-			for (let i = 0; i < this.memberDocDatas.length; i++) {
-				if (this.memberDocDatas[i].memberID == _memberID) {
-					tempMemberDocData = this.memberDocDatas[i]
-				}
+		// ダミー会員の削除
+		async deleteDummyMemberDoc(){
+			try {
+				const memberID = 'test'				
+				deleteMemberDoc(memberID)
+			} catch (error) {
+				console.log(error)				
 			}
-			this.$router.push({ name: 'mypage', params: { memberDocData0: tempMemberDocData } })
 		},
-		// async setSearchTags() {
-		// 	// 曖昧検索結果を初期化
-		// 	if (this.AsearchResults && this.AsearchResults.length > 0) this.AsearchResults.splice(0)
-		// 	if (this.searchTagObjs.length > 0) {
-		// 		// TODO:検索欄の文字数
-		// 		console.log('その文字数: ', tagName4Aimai.length)
-		// 		// 末尾タグの文字数が２以上なら
-		// 		if (tagName4Aimai.length >= 2) {
-		// 			// 曖昧検索実行
-		// 			try {
-		// 				this.AsearchResults = await searchAimai(tagName4Aimai)
-		// 				console.log('AsearchResults: ', this.AsearchResults)
-		// 			} catch (error) {
-		// 				console.log(error)
-		// 			}
-		// 		}
-		// 	}
-		// },
-		// // searchTags内該当タグが、選択した曖昧検索結果チップ値に変化する
-		// replaceTag(_selectedAsearchResult) {
-		// 	// 「検索窓に表示されたタグ群」と「最終的な検索タグ群」のうち、最後のタグを選択チップにすげ替え
-		// 	if (this.searchTagObjs.length > 0) {
-		// 		// NOTE:ここも要チェック
-		// 		this.searchTagObjs[this.searchTagObjs.length - 1].tagName = _selectedAsearchResult
-		// 		// AsearchResultをいったん削除
-		// 		if (this.AsearchResults.length > 0) this.AsearchResults.splice(0)
-		// 	}
-		// },
-		// /**
-		//  * タグの2-gramを作成して、tokenに格納する関数\
-		//  * （正規表現でもっとスッキリかけないかな）
-		//  * @param {string} tag
-		//  * @return {Array<string>} tag n-grammed in array
-		//  */
-		// getTagTokens(tag) {
-		// 	const token = []
-		// 	const chars = tag.split('')
-		// 	for (let j = 0; j < chars.length - 1; j++) {
-		// 		token.push(chars[j] + chars[j + 1])
-		// 	}
-		// 	return uniquifyArray(token)
-		// },
+		// ダミーイベントdocの生成
+		async genDummyEventDoc(){
 
-		// /**
-		//  * タグを曖昧検索する（似た表記のタグを見つけてくる）関数\
-		//  * @param {string} tag
-		//  * @param {number} numAimaiTags 実際に返す類似タグの数
-		//  * @return {Array<Object>} tag Document in array
-		//  */
-		// async searchAimai(tag, numAimaiTags = 3) {
-		// 	// １文字だけの場合はそもそも2gram化できないので、nullを返す
-		// 	if (tag.length <= 1) return null
-		// 	// 入力語を2gram化する（例：「腹筋崩壊」→→→[腹筋, 筋崩, 崩壊]）
-		// 	console.log('tag 2 aimai:', tag)
-		// 	let inputToken = getTagTokens(tag)
-		// 	// array-contains-anyが受け取れる配列の長さは１０個まで
-		// 	if (inputToken.length > maxQueryArrayLength) {
-		// 		// 文字列の最初の方に重要な情報（正しい文字列）があるだろうという仮定
-		// 		inputToken = inputToken.slice(0, maxQueryArrayLength)
-		// 	}
-		// 	// console.log('inputToken:', inputToken)
-		// 	try {
-		// 		let tagDocs = []
-		// 		// タグ自身のドキュメントを取得
-		// 		const docSnap = await get(`publicTags/${tag}`)
-		// 		if (docSnap) tagDocs.push(docSnap.data())
-		// 		else tagDocs.push(getPublicTagInitValue(tag, 0))
-		// 		// 類似タグを検索、追加
-		// 		const qrySnap = await getDocuments('publicTags', [
-		// 			['where', 'token', 'array-contains-any', inputToken],
-		// 			['limit', numAimaiTags - 1],
-		// 		])
-		// 		if (qrySnap) tagDocs = tagDocs.concat(qrySnap.docs.map((doc) => doc.data()))
-		// 		return tagDocs
-		// 	} catch (e) {
-		// 		console.log(e)
-		// 	}
-		// },
-	},
-	created() {
-		this.isAdmin = this.$isAdmin
-		if (!this.isAdmin) {
-			console.log('adminじゃないので、HOMEにpushします')
-			this.$router.push({ name: 'home' })
+		},
+		// ダミーイベントdocの削除
+		async deleteDummyEventDoc(){
+
 		}
+	},
+	async created() {
+		document.title = '事業者管理サイト- みんなで繋ごうエクレべの輪'
+		this.isAdmin = this.$isAdmin		
+		// if (!this.isAdmin) {
+		// 	console.log('adminじゃないので、HOMEにpushします')
+		// 	this.$router.push({ name: 'home' })
+		// }
+		await this.searchMembers('ステータス', '未対応')
+		
 	},
 	// SECTION:その他
 	mounted() {

@@ -15,7 +15,7 @@ import {
 } from './firestore.js'
 import { genHashID } from './otherUtils.js'
 
-// SECTION:DB操作（会員doc系）
+// :::DB操作（会員doc系）
 /**
  * その会員のdocを検索して返す関数（LINEuIDをキーに）
  * @param {string} _collectionName
@@ -45,8 +45,14 @@ export async function searchMyDocData(_collectionName, _LINEuID) {
  * @param {*} _memberID
  * @param {*} _data
  */
-export async function setNewMemberDoc(_data) {
-	const memberID = genHashID()
+export async function setNewMemberDoc(_data, _memberID=null) {
+	let memberID
+	if(!_memberID){
+		memberID = genHashID()
+	}else{
+		memberID = _memberID
+	}
+	
 	console.log('ランダムに生成されたmemberID: ', memberID)
 	// 生成docデータに「memberID」キーを追加する
 	let data = _data
@@ -155,7 +161,7 @@ export async function deleteMemberDoc(_memberID) {
 	}
 }
 
-// SECTION:DB操作（イベントdoc系）
+// :::DB操作（イベントdoc系）
 /**
  * イベントdocを取得（eventIDで指定）
  * @param {string} _eventID
@@ -254,6 +260,77 @@ export async function deleteEventDoc(_eventID) {
 export async function deleteAllEventDoc() {
 	try {
 		await deleteAllDocsInCollection('events')
+	} catch (error) {
+		console.log(error)
+	}
+}
+
+// :::メールdoc系
+/**
+ * イベントdocを取得（eventIDで指定）
+ * @returns {object / null}
+ */
+export async function getMailDocData() {
+	const docRef = getDocRef(`texts/mail`)
+	try {
+		const docSnap = await getDocSnap(docRef)
+		if (docSnap != null) {
+			const data = docSnap.data()
+			return data
+		} else {
+			return null
+		}
+	} catch (error) {
+		console.log(error)
+	}
+}
+
+/**
+ * 新しいeventDocを生成
+ * @param {object} _data
+ */
+export async function setNewMailDoc(_data, _mailID = null) {
+	// ランダムなeventIDを生成する
+
+	// 生成docデータに「eventID」キーを追加する
+	let data = _data
+	let mailID = _mailID
+	if (!mailID) {
+		mailID = genHashID()
+		console.log('ランダムに生成されたmailID: ', mailID)
+	}
+	data.mailID = mailID
+
+	const docRef = getDocRef(`texts/${mailID}`)
+	try {
+		await setaDoc(docRef, _data)
+	} catch (error) {
+		console.log(error)
+	}
+}
+
+/**
+ * イベントdocを更新（eventIDで指定） 
+ * @param {*} _data
+ */
+export async function updateMailDoc(_data) {
+	const docRef = getDocRef(`texts/mail`)
+	try {
+		console.log('起動したよ')
+		await updateaDoc(docRef, _data)
+	} catch (error) {
+		console.log(error)
+	}
+}
+
+/**
+ * イベントdocを削除（イベントIDで指定）
+ * @param {*} _mailID
+ */
+export async function deleteMailDoc(_mailID) {
+	const docRef = getDocRef(`texts/${_mailID}`)
+	try {
+		await deleteaDoc(docRef)
 	} catch (error) {
 		console.log(error)
 	}

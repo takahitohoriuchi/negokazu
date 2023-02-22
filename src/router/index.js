@@ -9,23 +9,36 @@ const routes = [
 		path: '/',
 		name: 'home',
 		component: HomeView,
-	},	
-	{
-		path: '/mypage',
-		name: 'mypage',
-		component: () => import('../views/MyPage.vue'),
-		props: true,
-	},	
-	{
-		path: '/subscribe',
-		name: 'subscribe',
-		component: () => import('../views/SubscribePage.vue'),
 		props: true,
 	},
 	{
-		path: '/admin',
+		path: '/twe/mypage',
+		name: 'mypage',
+		component: () => import('../views/MyPage.vue'),
+		props: true,
+	},
+	{
+		path: '/twe/go_along_with',
+		name: 'go_along_with',
+		component: () => import('../views/ApplicationView.vue'),
+		props: true,
+	},
+	{
+		path: '/twe/admin',
 		name: 'admin',
 		component: () => import('../views/AdminPage.vue'),
+		props: true,
+	},
+	{
+		path: '/twe/event_holding',
+		name: 'event_holding',
+		component: () => import('../views/InformView.vue'),
+		props: true,
+	},
+	{
+		path: '/twe/event_info',
+		name: 'event_info',
+		component: () => import('../views/HoldPlaceView.vue'),
 		props: true,
 	},
 ]

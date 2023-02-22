@@ -24,7 +24,7 @@
 <script>
 // import { onAuthStateChanged } from 'firebase/auth'
 import { /* setNewMemberDoc */ } from '@/modules/utils.js'
-import { logIn, /* auth */ /* signUp */ /* authStateChanged,  */ } from '../modules/authentication.js'
+import { logIn /* signUp *//* auth */ /* signUp */ /* authStateChanged,  */ } from '../modules/authentication.js'
 export default {
 	name: 'LoginUI',
 	components: {},
@@ -51,6 +51,8 @@ export default {
 			} catch (error) {
 				console.log(error)
 			}
+			// await signUp(this.userEmail, this.userPassword)
+			
 		},
 		// async trySignUp() {
 		// 	try {

@@ -35,7 +35,17 @@ export function jstNewDate() {
 	const d = new Date(Date.now() + (new Date().getTimezoneOffset() + 9 * 60) * 60 * 1000)
 	console.log('jstNewDate: ', d)
 }
-
+/* 
+ * @param {Number} _timestamp 
+ * @returns {String} 「-月-日」という文字列
+ */
+export function getYMfromTimeStamp(_timestamp) {
+	const d = new Date(_timestamp)
+	const year = d.getFullYear()
+	const month = d.getMonth() + 1	
+	const YM = `${year}年${month}月`
+	return YM
+}
 /**
  * timestampから●年●月●日●時●分を取得
  * @param {*} _timestamp

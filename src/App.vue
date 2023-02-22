@@ -1,45 +1,36 @@
 <template>
 	<v-app>
-		<v-app-bar app color="primary" dark>
+		<!-- NOTE:管理者しか、メニューをそもそもみせない -->
+		<v-app-bar app height="100px" color="theme" v-if="commonParams.isAdmin0">
 			<div class="d-flex align-center">
-				<v-img alt="ここにロゴ" class="shrink mr-2" contain src="@/assets/logo.png" transition="scale-transition" width="100" />
+				<v-img alt="ここにロゴ" class="shrink mr-2" contain src="@/assets/logo.svg" transition="scale-transition" width="100" />
 			</div>
 			<v-spacer></v-spacer>
-			<h4 v-if="commonParams.isAdmin0">※管理者ログイン中</h4>
+			<h4 v-if="commonParams.isAdmin0">※管理ログイン中（種別：{{adminType}}）</h4>
 			<v-spacer></v-spacer>
 			<!-- KEY:開発用ラジオボタン -->
-			<v-radio-group row v-model="devAccount" @change="switchDevAccount">
+			<!-- <v-radio-group row v-model="devAccount" @change="switchDevAccount">
 				<v-radio label="ダミー会員として" value="ダミーユーザー"></v-radio>
 				<v-radio label="管理者として" value="管理人"></v-radio>
-			</v-radio-group>
+			</v-radio-group> -->
 			<v-app-bar-nav-icon @click.stop="showMenu"></v-app-bar-nav-icon>
 			<!-- SECTION:ナビゲーション -->
 		</v-app-bar>
 		<!-- KEY:ルーターナビゲーション -->
-		<v-navigation-drawer right v-model="drawer" absolute temporary>
+		<v-navigation-drawer v-if="commonParams.isAdmin0" right v-model="drawer" absolute temporary>
 			<v-list nav dense>
-				<v-list-item-group active-class="blue--text text--accent-4">
-					<v-list-item
+				<v-list-item-group active-class="blue--text text--accent-4">		
+					<!-- <v-list-item
+						v-if="commonParams.isAdmin0"
 						@click="
 							$router.push({
-								name: 'home',
+								name: 'application',
 								params: commonParams,
 							})
 						"
 					>
-						<v-list-item-title>HOME</v-list-item-title>
-					</v-list-item>
-					<v-list-item
-						v-if="!commonParams.isAdmin0"
-						@click="
-							$router.push({
-								name: 'mypage',
-								params: commonParams,
-							})
-						"
-					>
-						<v-list-item-title>マイページ</v-list-item-title>
-					</v-list-item>
+						<v-list-item-title>賛同申請</v-list-item-title>
+					</v-list-item> -->
 
 					<v-list-item
 						v-if="commonParams.isAdmin0"
@@ -63,7 +54,7 @@
 </template>
 
 <script>
-import { getLIFFInfo } from './modules/liff'
+import { /* getLIFFInfo */ } from './modules/liff'
 import { getMemberDocDataWithLINEuID } from './modules/utils'
 
 export default {
@@ -74,6 +65,7 @@ export default {
 			isAdmin0: false,
 			memberDocData0: {},
 			LINEuID0: null,
+			adminType: null,
 		},
 		// メニュー展開するかいなか
 		drawer: false,
@@ -90,7 +82,7 @@ export default {
 		async switchDevAccount() {
 			if (this.devAccount == '管理人') {
 				this.$isAdmin = true
-				this.$LINEuID = await getLIFFInfo()
+				this.$LINEuID = null
 				this.$memDocData = null
 			} else {
 				this.$isAdmin = false
@@ -112,6 +104,10 @@ export default {
 		}
 		console.log('commonParams@App.vue（三種の神器）: ', this.commonParams)
 		this.devAccount = this.commonParams.isAdmin0 ? '管理人' : 'ダミーユーザー'
+		this.adminType = this.$isSpecialAdmin ? '管理人' : 'スタッフ'
+	},
+	mounted() {
+		// document.title = '事業者管理サイト- みんなで繋ごうエクレべの輪'				
 	},
 }
 </script>

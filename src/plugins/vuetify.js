@@ -7,13 +7,13 @@ export default new Vuetify({
 	theme: {
 		themes: {
 			light: {
-				// appbaeとかに使われてる色 （ひとまず青）
-				primary: '#89d2ca',
-				//
+				// appbarとかに使われてる色 （ひとまず青）
+				primary: '#bfa379',
+				theme: '#ffffff',
 				secondary: '#d2bc40',
 				accent: '#dc395f',
-				error: '#ffeb3b',
-				warning: '#ffc107',
+				error: '#fd3c2f',
+				warning: '#fd3c2f',
 				info: '#ff5722',
 				success: '#795548',
 			},
